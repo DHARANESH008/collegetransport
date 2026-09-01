@@ -47,15 +47,17 @@ A commercial ERP-grade College Transport Management System built with **Spring B
 
 ---
 
-## 👥 Default Demo Credentials
+## 👥 Default Credentials
 
 | Role | Username | Password | Notes / Assigned Unit |
 |---|---|---|---|
-| **Admin** | `admin` | `Admin@123` | Transport Head • All ERP Masters & Reports |
-| **Driver** | `ravi` | `Driver@123` | Driver • Assigned to Bus #25 (Erode Route) |
-| **Driver** | `kumar` | `Driver@123` | Driver • Assigned to Bus #42 (Tiruppur Route) |
-| **Security** | `security_main` | `Security@123` | Main Gate Checkpoint Terminal |
-| **Security** | `security_south` | `Security@123` | South Gate Checkpoint Terminal |
+| **Admin** | `admin` | `admin+svgi` | Transport Head • All Management Masters & Reports |
+| **Admin** | `svgiadmin` | `admin+svgi` | System Admin Account |
+| **Driver** | `DR25` (or `25`) | `25+svgi` | Driver • Assigned to Bus #25 (Erode Route) |
+| **Driver** | `DR42` (or `42`) | `42+svgi` | Driver • Assigned to Bus #42 (Tiruppur Route) |
+| **Security** | `north` | `north+svgi` | North Gate Checkpoint Terminal |
+| **Security** | `south` | `south+svgi` | South Gate Checkpoint Terminal |
+| **Security** | `main` | `main+svgi` | Main Gate Checkpoint Terminal |
 
 ### Valid Reference IDs for New Admin Registration:
 - `REF-ADM-2026-001` (`UNUSED`)

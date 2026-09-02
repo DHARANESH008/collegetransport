@@ -644,6 +644,26 @@ export const SecurityDashboard = () => {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
               <Button
                 variant="contained"
+                color="secondary"
+                size="small"
+                startIcon={<Download size={16} />}
+                onClick={() =>
+                  exportToCSV(filteredEntries, 'Gate_In_Entries', [
+                    { label: 'Bus Number', key: 'busNumber' },
+                    { label: 'Registration Plate', key: 'registrationNumber' },
+                    { label: 'Route Name', key: 'routeName' },
+                    { label: 'Gate Name', key: 'gateName' },
+                    { label: 'Entry Date', key: 'entryDate' },
+                    { label: 'Entry Time', key: 'entryTime' }
+                  ])
+                }
+                sx={{ borderRadius: 2.5, fontWeight: 800, px: 2 }}
+              >
+                Export CSV
+              </Button>
+
+              <Button
+                variant="contained"
                 color="success"
                 size="small"
                 startIcon={<FileSpreadsheet size={16} />}
@@ -758,6 +778,27 @@ export const SecurityDashboard = () => {
             </Typography>
 
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+              <Button
+                variant="contained"
+                color="secondary"
+                size="small"
+                startIcon={<Download size={16} />}
+                onClick={() =>
+                  exportToCSV(filteredOutings, 'Gate_Out_Movements', [
+                    { label: 'Bus Number', key: 'busNumber' },
+                    { label: 'Registration Plate', key: 'registrationNumber' },
+                    { label: 'Route Name', key: 'routeName' },
+                    { label: 'Gate Name', key: 'gateName' },
+                    { label: 'Exit Reason', key: 'exitReason' },
+                    { label: 'Exit Date', key: 'outingDate' },
+                    { label: 'Exit Time', key: 'exitTime' }
+                  ])
+                }
+                sx={{ borderRadius: 2.5, fontWeight: 800, px: 2 }}
+              >
+                Export CSV
+              </Button>
+
               <Button
                 variant="contained"
                 color="warning"

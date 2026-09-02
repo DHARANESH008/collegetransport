@@ -23,11 +23,12 @@ import {
   DialogActions,
   IconButton,
   InputAdornment,
-  Alert
+  Alert,
+  Tabs,
+  Tab
 } from '@mui/material';
-import { ShieldAlert, DoorOpen, Plus, Edit, Search, Clock, CheckCircle2, AlertTriangle, Bus } from 'lucide-react';
+import { ShieldAlert, DoorOpen, Plus, Edit, Search, Clock, CheckCircle2, AlertTriangle, Bus, LogOut, ArrowRightLeft } from 'lucide-react';
 import { securityService } from '../../services/securityService';
-import { adminService } from '../../services/adminService';
 import { useLanguage } from '../../context/LanguageContext';
 import { NotificationToast } from '../../components/NotificationToast';
 import { motion } from 'framer-motion';
@@ -40,11 +41,19 @@ export const SecurityDashboard = () => {
   const [busSearchInput, setBusSearchInput] = useState('');
   const [selectedBusNumber, setSelectedBusNumber] = useState('');
   const [entries, setEntries] = useState([]);
+  const [outings, setOutings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [entering, setEntering] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Edit Modal State (Edit Bus Number ONLY)
+  // Mode Tab: 'GATE_IN' vs 'GATE_OUT'
+  const [movementMode, setMovementMode] = useState('GATE_IN');
+
+  // Outing Reason state
+  const [reasonCategory, setReasonCategory] = useState('Diesel Fill');
+  const [customReason, setCustomReason] = useState('');
+
+  // Edit Modal State (Edit Bus Number ONLY for Gate-In)
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
   const [newBusNumber, setNewBusNumber] = useState('');
@@ -53,6 +62,15 @@ export const SecurityDashboard = () => {
 
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
   const [errorBanner, setErrorBanner] = useState('');
+
+  const reasonSuggestions = [
+    { value: 'Diesel Fill', label: '⛽ Diesel Fill / Fuel Station' },
+    { value: 'Mechanic Shop / Repair', label: '🔧 Mechanic Shop / Breakdown Repair' },
+    { value: 'General Service / Maintenance', label: '🛠️ General Service & Maintenance' },
+    { value: 'Hostel Trip / Student Transport', label: '🏫 Hostel Trip / Campus Pick-up' },
+    { value: 'Special Event / Off-Campus Duty', label: '🚌 Special Event / Off-Campus Duty' },
+    { value: 'Custom', label: '✏️ Other / Custom Reason (Type below)' }
+  ];
 
   const matchingBuses = buses.filter((b) => {
     if (!busSearchInput.trim()) return true;
@@ -70,14 +88,16 @@ export const SecurityDashboard = () => {
   const fetchInitialData = async () => {
     try {
       setLoading(true);
-      const [gate, busList, todayLogs] = await Promise.all([
+      const [gate, busList, todayLogs, todayOutingLogs] = await Promise.all([
         securityService.getGateInfo(),
         securityService.getBuses(),
-        securityService.getTodayEntries()
+        securityService.getTodayEntries(),
+        securityService.getTodayOutings()
       ]);
       setGateInfo(gate);
       setBuses(busList || []);
       setEntries(todayLogs || []);
+      setOutings(todayOutingLogs || []);
       if (busList?.length > 0) {
         setSelectedBusNumber(String(busList[0].busNumber));
       }
@@ -92,17 +112,20 @@ export const SecurityDashboard = () => {
     fetchInitialData();
     const interval = setInterval(async () => {
       try {
-        const todayLogs = await securityService.getTodayEntries();
+        const [todayLogs, todayOutingLogs] = await Promise.all([
+          securityService.getTodayEntries(),
+          securityService.getTodayOutings()
+        ]);
         setEntries(todayLogs || []);
+        setOutings(todayOutingLogs || []);
       } catch {}
     }, 15000);
     return () => clearInterval(interval);
   }, []);
 
-  // 1-Click "BUS ENTER" button
+  // 1-Click "BUS ENTER" button (Gate-In)
   const handleBusEnter = async (overrideBusNum) => {
     setErrorBanner('');
-
     const targetVal = overrideBusNum !== undefined ? overrideBusNum : selectedBusNumber;
     const num = parseInt(targetVal, 10);
     if (isNaN(num) || num < 0 || num > 150) {
@@ -110,19 +133,15 @@ export const SecurityDashboard = () => {
       return;
     }
 
-    setEntering(true);
+    setActionLoading(true);
     try {
-      const res = await securityService.recordBusEntry(num);
+      await securityService.recordBusEntry(num);
       setToast({
         open: true,
-        message: `✅ Bus #${num} ENTRY LOGGED at ${gateInfo?.gateName} (${new Date().toLocaleTimeString()})`,
+        message: `✅ Bus #${num} GATE-IN ENTRY LOGGED at ${gateInfo?.gateName} (${new Date().toLocaleTimeString()})`,
         severity: 'success'
       });
-
-      // Clear search box for next bus
       setBusSearchInput('');
-
-      // Refresh today's logs
       const updated = await securityService.getTodayEntries();
       setEntries(updated || []);
     } catch (err) {
@@ -130,11 +149,51 @@ export const SecurityDashboard = () => {
       setErrorBanner(msg);
       setToast({ open: true, message: msg, severity: 'error' });
     } finally {
-      setEntering(false);
+      setActionLoading(false);
     }
   };
 
-  // Open Edit Modal (Can edit Bus Number ONLY; Date/Time immutable)
+  // Record GATE-OUT Exit button
+  const handleBusOuting = async () => {
+    setErrorBanner('');
+    const num = parseInt(selectedBusNumber, 10);
+    if (isNaN(num) || num < 0 || num > 150) {
+      setErrorBanner('Please select a valid Bus Number between 0 and 150');
+      return;
+    }
+
+    let finalReason = reasonCategory === 'Custom' ? customReason.trim() : reasonCategory;
+    if (reasonCategory !== 'Custom' && customReason.trim()) {
+      finalReason = `${reasonCategory} (${customReason.trim()})`;
+    }
+
+    if (!finalReason) {
+      setErrorBanner('Please enter or select a valid reason for bus gate exit');
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      await securityService.recordBusOuting(num, finalReason);
+      setToast({
+        open: true,
+        message: `📤 Bus #${num} GATE-OUT LOGGED [${finalReason}] at ${gateInfo?.gateName}`,
+        severity: 'success'
+      });
+      setBusSearchInput('');
+      setCustomReason('');
+      const updatedOutings = await securityService.getTodayOutings();
+      setOutings(updatedOutings || []);
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to record bus gate-out exit';
+      setErrorBanner(msg);
+      setToast({ open: true, message: msg, severity: 'error' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Open Edit Modal (Can edit Bus Number ONLY)
   const handleOpenEdit = (entry) => {
     setEditingEntry(entry);
     setNewBusNumber(String(entry.busNumber));
@@ -172,6 +231,12 @@ export const SecurityDashboard = () => {
     (en.routeName && en.routeName.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
+  const filteredOutings = outings.filter((ou) =>
+    String(ou.busNumber).includes(searchTerm) ||
+    (ou.exitReason && ou.exitReason.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (ou.registrationNumber && ou.registrationNumber.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
@@ -182,7 +247,7 @@ export const SecurityDashboard = () => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5 }}>
-      {/* Header Banner: ONLY Gate Name is shown; Security staff name is hidden */}
+      {/* Header Banner */}
       <Card
         sx={{
           borderRadius: 4,
@@ -226,11 +291,50 @@ export const SecurityDashboard = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1, borderRadius: 3, backgroundColor: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
             <Clock size={18} color="#60a5fa" />
             <Typography variant="body2" sx={{ color: '#f8fafc', fontWeight: 700 }}>
-              Live Entry Gate Terminal
+              Live Gate Movement Terminal
             </Typography>
           </Box>
         </Box>
       </Card>
+
+      {/* Movement Mode Toggle Tabs (GATE-IN vs GATE-OUT) */}
+      <Box sx={{ borderBottom: 1, borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+        <Tabs
+          value={movementMode}
+          onChange={(e, val) => setMovementMode(val)}
+          textColor="inherit"
+          sx={{
+            '& .MuiTabs-indicator': {
+              backgroundColor: movementMode === 'GATE_IN' ? '#10b981' : '#f59e0b',
+              height: 4,
+              borderRadius: '4px 4px 0 0'
+            }
+          }}
+        >
+          <Tab
+            value="GATE_IN"
+            label="📥 GATE-IN (BUS ENTER / ARRIVAL)"
+            sx={{
+              fontWeight: 900,
+              fontSize: { xs: '0.85rem', sm: '1rem' },
+              color: movementMode === 'GATE_IN' ? '#34d399' : '#94a3b8',
+              px: { xs: 2, sm: 3 },
+              py: 1.5
+            }}
+          />
+          <Tab
+            value="GATE_OUT"
+            label="📤 GATE-OUT (BUS EXIT WITH REASON)"
+            sx={{
+              fontWeight: 900,
+              fontSize: { xs: '0.85rem', sm: '1rem' },
+              color: movementMode === 'GATE_OUT' ? '#fbbf24' : '#94a3b8',
+              px: { xs: 2, sm: 3 },
+              py: 1.5
+            }}
+          />
+        </Tabs>
+      </Box>
 
       {errorBanner && (
         <Alert severity="error" icon={<AlertTriangle size={22} />} sx={{ borderRadius: 3, fontSize: '0.95rem' }}>
@@ -238,12 +342,12 @@ export const SecurityDashboard = () => {
         </Alert>
       )}
 
-      {/* Main Bus Entry Action Card with Live Search & Scrollable Grid */}
+      {/* Main Bus Action Card */}
       <Card
         sx={{
           borderRadius: 4,
           backgroundColor: 'rgba(15, 23, 42, 0.85)',
-          border: '1px solid rgba(245, 158, 11, 0.3)',
+          border: movementMode === 'GATE_IN' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(245, 158, 11, 0.4)',
           boxShadow: '0 15px 35px rgba(0,0,0,0.4)',
           p: { xs: 2.5, sm: 3.5 }
         }}
@@ -251,28 +355,30 @@ export const SecurityDashboard = () => {
         <CardContent sx={{ p: 0 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1, mb: 1 }}>
             <Typography variant="h6" sx={{ fontWeight: 800, color: '#f8fafc' }}>
-              🚍 {t('security.selectBus')} (0–150)
+              {movementMode === 'GATE_IN' ? '📥 Record Bus Campus Arrival' : '📤 Record Bus Gate-Out / Campus Exit'}
             </Typography>
             <Chip
-              label="Type Bus # OR Scroll & Touch to Select"
+              label={movementMode === 'GATE_IN' ? "1-Click Campus Entry Log" : "Select / Type Outing Reason"}
               size="small"
-              color="warning"
+              color={movementMode === 'GATE_IN' ? "success" : "warning"}
               variant="outlined"
               sx={{ fontWeight: 700 }}
             />
           </Box>
 
           <Typography variant="body2" sx={{ color: '#94a3b8', mb: 2.5 }}>
-            Type in the search box below or scroll through the bus list, touch the bus, and press <strong>BUS ENTER</strong>.
+            {movementMode === 'GATE_IN'
+              ? 'Select bus number and click BUS ENTER to record campus arrival.'
+              : 'Select bus number, pick outing reason from scrollable suggestions (or type reason), and click RECORD GATE-OUT.'}
           </Typography>
 
-          {/* Search Box & Enter Action Bar */}
-          <Grid container spacing={2} alignItems="center" sx={{ mb: 2.5 }}>
-            <Grid item xs={12} sm={7} md={8}>
+          {/* Search Box & Action Bar */}
+          <Grid container spacing={2} alignItems="flex-start" sx={{ mb: 2.5 }}>
+            <Grid item xs={12} sm={movementMode === 'GATE_OUT' ? 6 : 7} md={movementMode === 'GATE_OUT' ? 4 : 8}>
               <TextField
                 fullWidth
                 size="medium"
-                placeholder="🔍 Type Bus Number (e.g. 25, 42, 7) or Route Name (Erode, Tiruppur)..."
+                placeholder="🔍 Type Bus Number (e.g. 25, 42, 7) or Route Name..."
                 value={busSearchInput}
                 onChange={(e) => {
                   setBusSearchInput(e.target.value);
@@ -281,21 +387,10 @@ export const SecurityDashboard = () => {
                     setSelectedBusNumber(String(exact.busNumber));
                   }
                 }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    if (selectedBusNumber) {
-                      handleBusEnter();
-                    } else if (matchingBuses.length > 0) {
-                      setSelectedBusNumber(String(matchingBuses[0].busNumber));
-                      setTimeout(() => handleBusEnter(matchingBuses[0].busNumber), 50);
-                    }
-                  }
-                }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <Search size={20} color="#fbbf24" />
+                      <Search size={20} color={movementMode === 'GATE_IN' ? "#34d399" : "#fbbf24"} />
                     </InputAdornment>
                   ),
                   endAdornment: busSearchInput && (
@@ -317,34 +412,90 @@ export const SecurityDashboard = () => {
               />
             </Grid>
 
-            {/* Giant "BUS ENTER" Button */}
-            <Grid item xs={12} sm={5} md={4}>
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                <Button
+            {/* GATE-OUT Reason Dropdown & Custom Type Input */}
+            {movementMode === 'GATE_OUT' && (
+              <Grid item xs={12} sm={6} md={4}>
+                <TextField
                   fullWidth
-                  variant="contained"
-                  color="warning"
-                  size="large"
-                  onClick={() => handleBusEnter()}
-                  disabled={entering || !selectedBusNumber}
-                  startIcon={entering ? <CircularProgress size={24} color="inherit" /> : <Bus size={26} />}
+                  select
+                  size="medium"
+                  label="Select Outing Reason (Scroll Down)"
+                  value={reasonCategory}
+                  onChange={(e) => setReasonCategory(e.target.value)}
                   sx={{
-                    py: 1.5,
-                    fontSize: '1.2rem',
-                    fontWeight: 900,
-                    letterSpacing: '0.05em',
-                    borderRadius: 3.5,
-                    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                    boxShadow: '0 10px 30px rgba(245, 158, 11, 0.4)',
-                    color: '#ffffff',
-                    '&:hover': {
-                      background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
-                      boxShadow: '0 15px 35px rgba(245, 158, 11, 0.6)'
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 3.5,
+                      backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                      fontWeight: 700
                     }
                   }}
                 >
-                  {entering ? t('security.recording') : `${t('security.enterBusBtn')} #${selectedBusNumber || '?'}`}
-                </Button>
+                  {reasonSuggestions.map((item) => (
+                    <MenuItem key={item.value} value={item.value} sx={{ fontWeight: 600, py: 1 }}>
+                      {item.label}
+                    </MenuItem>
+                  ))}
+                </TextField>
+
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="Optional details / custom reason..."
+                  value={customReason}
+                  onChange={(e) => setCustomReason(e.target.value)}
+                  sx={{ mt: 1.5, '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
+                />
+              </Grid>
+            )}
+
+            {/* Giant Action Button */}
+            <Grid item xs={12} sm={12} md={4}>
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                {movementMode === 'GATE_IN' ? (
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    color="success"
+                    size="large"
+                    onClick={() => handleBusEnter()}
+                    disabled={actionLoading || !selectedBusNumber}
+                    startIcon={actionLoading ? <CircularProgress size={24} color="inherit" /> : <Bus size={26} />}
+                    sx={{
+                      py: 1.5,
+                      fontSize: '1.2rem',
+                      fontWeight: 900,
+                      letterSpacing: '0.05em',
+                      borderRadius: 3.5,
+                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                      boxShadow: '0 10px 30px rgba(16, 185, 129, 0.4)',
+                      color: '#ffffff'
+                    }}
+                  >
+                    {actionLoading ? t('security.recording') : `${t('security.enterBusBtn')} #${selectedBusNumber || '?'}`}
+                  </Button>
+                ) : (
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    color="warning"
+                    size="large"
+                    onClick={() => handleBusOuting()}
+                    disabled={actionLoading || !selectedBusNumber}
+                    startIcon={actionLoading ? <CircularProgress size={24} color="inherit" /> : <LogOut size={26} />}
+                    sx={{
+                      py: 1.5,
+                      fontSize: '1.15rem',
+                      fontWeight: 900,
+                      letterSpacing: '0.05em',
+                      borderRadius: 3.5,
+                      background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                      boxShadow: '0 10px 30px rgba(245, 158, 11, 0.4)',
+                      color: '#ffffff'
+                    }}
+                  >
+                    {actionLoading ? "Logging Exit..." : `RECORD GATE-OUT #${selectedBusNumber || '?'}`}
+                  </Button>
+                )}
               </motion.div>
             </Grid>
           </Grid>
@@ -356,8 +507,8 @@ export const SecurityDashboard = () => {
                 p: 2,
                 mb: 2.5,
                 borderRadius: 3,
-                backgroundColor: 'rgba(245, 158, 11, 0.12)',
-                border: '2px solid #f59e0b',
+                backgroundColor: movementMode === 'GATE_IN' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.12)',
+                border: movementMode === 'GATE_IN' ? '2px solid #10b981' : '2px solid #f59e0b',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
@@ -371,7 +522,7 @@ export const SecurityDashboard = () => {
                     px: 1.8,
                     py: 0.8,
                     borderRadius: 2.5,
-                    backgroundColor: '#f59e0b',
+                    backgroundColor: movementMode === 'GATE_IN' ? '#10b981' : '#f59e0b',
                     color: '#0f172a',
                     fontWeight: 900,
                     fontSize: '1.25rem'
@@ -390,180 +541,244 @@ export const SecurityDashboard = () => {
               </Box>
 
               <Chip
-                label="Selected & Ready for Gate Entry"
-                color="success"
+                label={movementMode === 'GATE_IN' ? "Selected & Ready for Gate Entry" : "Selected & Ready for Gate Exit"}
+                color={movementMode === 'GATE_IN' ? "success" : "warning"}
                 size="small"
                 sx={{ fontWeight: 800, borderRadius: 2 }}
               />
             </Box>
           )}
 
-          {/* Touch-Friendly Scrollable Bus Grid / List */}
-          <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 700, mb: 1, display: 'block' }}>
-            👇 Touch any Bus below to select ({matchingBuses.length} buses available):
+          {/* Scrollable Bus Touch Grid */}
+          <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 700, display: 'block', mb: 1 }}>
+            QUICK SELECT BUS (TOUCH / CLICK):
           </Typography>
-
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: {
-                xs: 'repeat(auto-fill, minmax(130px, 1fr))',
-                sm: 'repeat(auto-fill, minmax(150px, 1fr))',
-                md: 'repeat(auto-fill, minmax(170px, 1fr))'
-              },
+              gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
               gap: 1.5,
-              maxHeight: '260px',
+              maxHeight: 220,
               overflowY: 'auto',
-              p: 1,
-              borderRadius: 3,
-              backgroundColor: 'rgba(0, 0, 0, 0.25)',
-              border: '1px solid rgba(255, 255, 255, 0.06)'
+              pr: 1
             }}
           >
-            {matchingBuses.length === 0 ? (
-              <Box sx={{ gridColumn: '1 / -1', py: 4, textAlign: 'center', color: '#94a3b8' }}>
-                No bus matching "{busSearchInput}". Try another bus number (0–150).
-              </Box>
-            ) : (
-              matchingBuses.map((b) => {
-                const isSelected = String(b.busNumber) === String(selectedBusNumber);
-                return (
-                  <motion.div key={b.id} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.96 }}>
-                    <Box
-                      onClick={() => {
-                        setSelectedBusNumber(String(b.busNumber));
-                        setBusSearchInput(String(b.busNumber));
-                      }}
+            {matchingBuses.map((b) => {
+              const isSelected = String(b.busNumber) === String(selectedBusNumber);
+              return (
+                <motion.div key={b.id} whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}>
+                  <Box
+                    onClick={() => setSelectedBusNumber(String(b.busNumber))}
+                    sx={{
+                      p: 1.5,
+                      borderRadius: 3,
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      backgroundColor: isSelected
+                        ? (movementMode === 'GATE_IN' ? 'rgba(16, 185, 129, 0.25)' : 'rgba(245, 158, 11, 0.25)')
+                        : 'rgba(255, 255, 255, 0.03)',
+                      border: isSelected
+                        ? (movementMode === 'GATE_IN' ? '2px solid #10b981' : '2px solid #f59e0b')
+                        : '1px solid rgba(255, 255, 255, 0.08)',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <Typography
+                      variant="h6"
                       sx={{
-                        p: 1.5,
-                        borderRadius: 3,
-                        cursor: 'pointer',
-                        textAlign: 'center',
-                        transition: 'all 0.2s ease',
-                        backgroundColor: isSelected ? 'rgba(245, 158, 11, 0.25)' : 'rgba(255, 255, 255, 0.04)',
-                        border: isSelected ? '2px solid #f59e0b' : '1px solid rgba(255, 255, 255, 0.08)',
-                        boxShadow: isSelected ? '0 0 20px rgba(245, 158, 11, 0.4)' : 'none',
-                        '&:hover': {
-                          backgroundColor: isSelected ? 'rgba(245, 158, 11, 0.3)' : 'rgba(255, 255, 255, 0.08)',
-                          borderColor: '#fbbf24'
-                        }
+                        fontWeight: 900,
+                        color: isSelected ? (movementMode === 'GATE_IN' ? '#34d399' : '#fbbf24') : '#f8fafc',
+                        fontSize: '1.15rem'
                       }}
                     >
-                      <Typography
-                        variant="h6"
-                        sx={{
-                          fontWeight: 900,
-                          color: isSelected ? '#fbbf24' : '#f8fafc',
-                          fontSize: '1.2rem',
-                          letterSpacing: '-0.02em'
-                        }}
-                      >
-                        Bus #{b.busNumber}
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: '#60a5fa', fontWeight: 700, display: 'block', mt: 0.2 }}>
-                        {b.routeName || 'Campus'}
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: '#94a3b8', fontSize: '0.7rem', display: 'block' }}>
-                        {b.registrationNumber}
-                      </Typography>
-                    </Box>
-                  </motion.div>
-                );
-              })
-            )}
+                      Bus #{b.busNumber}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: '#60a5fa', fontWeight: 700, display: 'block' }}>
+                      {b.routeName || 'Campus'}
+                    </Typography>
+                  </Box>
+                </motion.div>
+              );
+            })}
           </Box>
         </CardContent>
       </Card>
 
-      {/* Today's Entries Table with Search & Edit */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-          <Typography variant="h6" sx={{ fontWeight: 800, color: '#f8fafc' }}>
-            {t('security.todayEntries')} ({filteredEntries.length})
-          </Typography>
+      {/* Movement Log Tables */}
+      {movementMode === 'GATE_IN' ? (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 800, color: '#f8fafc' }}>
+              📥 {t('security.todayEntries')} ({filteredEntries.length})
+            </Typography>
 
-          <TextField
-            size="small"
-            placeholder={t('security.searchPlaceholder')}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            sx={{ minWidth: 280 }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search size={16} color="#94a3b8" />
-                </InputAdornment>
-              )
-            }}
-          />
-        </Box>
+            <TextField
+              size="small"
+              placeholder={t('security.searchPlaceholder')}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              sx={{ minWidth: 280 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search size={16} color="#94a3b8" />
+                  </InputAdornment>
+                )
+              }}
+            />
+          </Box>
 
-        <TableContainer component={Paper} sx={{ borderRadius: 4, backgroundColor: 'rgba(15, 23, 42, 0.75)' }}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Bus Number</TableCell>
-                <TableCell>Registration Plate</TableCell>
-                <TableCell>Route</TableCell>
-                <TableCell>Gate Name</TableCell>
-                <TableCell>Entry Date</TableCell>
-                <TableCell>Entry Time</TableCell>
-                <TableCell align="right">Edit (Bus No Only)</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredEntries.length === 0 ? (
+          <TableContainer component={Paper} sx={{ borderRadius: 4, backgroundColor: 'rgba(15, 23, 42, 0.75)' }}>
+            <Table>
+              <TableHead>
                 <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 4, color: '#94a3b8' }}>
-                    No bus entries recorded at gate today yet.
-                  </TableCell>
+                  <TableCell>Bus Number</TableCell>
+                  <TableCell>Registration Plate</TableCell>
+                  <TableCell>Route</TableCell>
+                  <TableCell>Gate Name</TableCell>
+                  <TableCell>Entry Date</TableCell>
+                  <TableCell>Entry Time</TableCell>
+                  <TableCell align="right">Edit (Bus No Only)</TableCell>
                 </TableRow>
-              ) : (
-                filteredEntries.map((entry) => (
-                  <TableRow key={entry.id} hover>
-                    <TableCell>
-                      <Chip
-                        label={`Bus #${entry.busNumber}`}
-                        color="warning"
-                        sx={{ fontWeight: 800, borderRadius: 2 }}
-                      />
-                    </TableCell>
-                    <TableCell sx={{ color: '#f8fafc', fontWeight: 700 }}>
-                      {entry.registrationNumber}
-                    </TableCell>
-                    <TableCell sx={{ color: '#cbd5e1' }}>
-                      {entry.routeName || '-'}
-                    </TableCell>
-                    <TableCell sx={{ color: '#fbbf24', fontWeight: 700 }}>
-                      {entry.gateName}
-                    </TableCell>
-                    <TableCell sx={{ color: '#cbd5e1' }}>
-                      {entry.entryDate}
-                    </TableCell>
-                    <TableCell sx={{ color: '#60a5fa', fontWeight: 800, fontSize: '0.95rem' }}>
-                      {entry.entryTime ? String(entry.entryTime).substring(0, 8) : '-'}
-                    </TableCell>
-                    <TableCell align="right">
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        color="info"
-                        startIcon={<Edit size={14} />}
-                        onClick={() => handleOpenEdit(entry)}
-                        sx={{ borderRadius: 2, fontWeight: 700 }}
-                      >
-                        Edit Bus #
-                      </Button>
+              </TableHead>
+              <TableBody>
+                {filteredEntries.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center" sx={{ py: 4, color: '#94a3b8' }}>
+                      No bus entries recorded at gate today yet.
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Box>
+                ) : (
+                  filteredEntries.map((entry) => (
+                    <TableRow key={entry.id} hover>
+                      <TableCell>
+                        <Chip
+                          label={`Bus #${entry.busNumber}`}
+                          color="success"
+                          sx={{ fontWeight: 800, borderRadius: 2 }}
+                        />
+                      </TableCell>
+                      <TableCell sx={{ color: '#f8fafc', fontWeight: 700 }}>
+                        {entry.registrationNumber}
+                      </TableCell>
+                      <TableCell sx={{ color: '#cbd5e1' }}>
+                        {entry.routeName || '-'}
+                      </TableCell>
+                      <TableCell sx={{ color: '#fbbf24', fontWeight: 700 }}>
+                        {entry.gateName}
+                      </TableCell>
+                      <TableCell sx={{ color: '#cbd5e1' }}>
+                        {entry.entryDate}
+                      </TableCell>
+                      <TableCell sx={{ color: '#60a5fa', fontWeight: 800, fontSize: '0.95rem' }}>
+                        {entry.entryTime ? String(entry.entryTime).substring(0, 8) : '-'}
+                      </TableCell>
+                      <TableCell align="right">
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="info"
+                          startIcon={<Edit size={14} />}
+                          onClick={() => handleOpenEdit(entry)}
+                          sx={{ borderRadius: 2, fontWeight: 700 }}
+                        >
+                          Edit Bus #
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
+      ) : (
+        /* GATE-OUT Table */
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 800, color: '#f8fafc' }}>
+              📤 Today's Gate-Out Movements ({filteredOutings.length})
+            </Typography>
 
-      {/* Edit Bus Number Modal (Date and Time are immutable) */}
+            <TextField
+              size="small"
+              placeholder="Search outings by Bus # or Reason..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              sx={{ minWidth: 280 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search size={16} color="#94a3b8" />
+                  </InputAdornment>
+                )
+              }}
+            />
+          </Box>
+
+          <TableContainer component={Paper} sx={{ borderRadius: 4, backgroundColor: 'rgba(15, 23, 42, 0.75)' }}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Bus Number</TableCell>
+                  <TableCell>Registration Plate</TableCell>
+                  <TableCell>Route Name</TableCell>
+                  <TableCell>Gate Name</TableCell>
+                  <TableCell>Exit Reason</TableCell>
+                  <TableCell>Exit Date</TableCell>
+                  <TableCell>Exit Time</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredOutings.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center" sx={{ py: 4, color: '#94a3b8' }}>
+                      No bus gate-out exits recorded today yet.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredOutings.map((outing) => (
+                    <TableRow key={outing.id} hover>
+                      <TableCell>
+                        <Chip
+                          label={`Bus #${outing.busNumber}`}
+                          color="warning"
+                          sx={{ fontWeight: 800, borderRadius: 2 }}
+                        />
+                      </TableCell>
+                      <TableCell sx={{ color: '#f8fafc', fontWeight: 700 }}>
+                        {outing.registrationNumber}
+                      </TableCell>
+                      <TableCell sx={{ color: '#cbd5e1' }}>
+                        {outing.routeName || '-'}
+                      </TableCell>
+                      <TableCell sx={{ color: '#fbbf24', fontWeight: 700 }}>
+                        {outing.gateName}
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={outing.exitReason}
+                          variant="outlined"
+                          color="warning"
+                          sx={{ fontWeight: 800, borderRadius: 2 }}
+                        />
+                      </TableCell>
+                      <TableCell sx={{ color: '#cbd5e1' }}>
+                        {outing.outingDate}
+                      </TableCell>
+                      <TableCell sx={{ color: '#f59e0b', fontWeight: 800, fontSize: '0.95rem' }}>
+                        {outing.exitTime ? String(outing.exitTime).substring(0, 8) : '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
+      )}
+
+      {/* Edit Bus Number Modal */}
       <Dialog
         open={editModalOpen}
         onClose={() => setEditModalOpen(false)}
@@ -593,7 +808,6 @@ export const SecurityDashboard = () => {
               </Typography>
             )}
 
-            {/* Readonly Date/Time Indicators */}
             <Box sx={{ p: 1.5, borderRadius: 2.5, backgroundColor: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
               <Typography variant="caption" sx={{ color: '#94a3b8', display: 'block' }}>
                 Gate: {editingEntry?.gateName}

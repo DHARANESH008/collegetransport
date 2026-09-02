@@ -114,6 +114,57 @@ public class SecurityService {
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
+    @Autowired
+    private BusOutingRepository busOutingRepository;
+
+    // Record Gate-Out movement (Bus Exit with Outing Reason)
+    @Transactional
+    public com.college.transport.dto.BusOutingResponse recordBusOuting(String username, Integer busNumber, String exitReason) {
+        if (busNumber == null || busNumber < 0 || busNumber > 150) {
+            throw new BadRequestException("Please select a valid Bus Number between 0 and 150");
+        }
+        if (exitReason == null || exitReason.trim().isEmpty()) {
+            throw new BadRequestException("Please select or enter a valid reason for bus gate exit");
+        }
+
+        User securityUser = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Security user not found"));
+
+        Bus bus = busRepository.findByBusNumber(busNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Bus " + busNumber + " does not exist in master records"));
+
+        Gate gate = getAssignedGate(username);
+
+        BusOuting outing = new BusOuting(bus, gate, securityUser, exitReason.trim());
+        outing = busOutingRepository.save(outing);
+
+        return toOutingResponse(outing);
+    }
+
+    // Get today's gate outings
+    public List<com.college.transport.dto.BusOutingResponse> getTodayOutings() {
+        LocalDate today = LocalDate.now();
+        return busOutingRepository.findByOutingDateOrderByExitTimeDesc(today)
+                .stream().map(this::toOutingResponse).collect(Collectors.toList());
+    }
+
+    private com.college.transport.dto.BusOutingResponse toOutingResponse(BusOuting outing) {
+        com.college.transport.dto.BusOutingResponse res = new com.college.transport.dto.BusOutingResponse();
+        res.setId(outing.getId());
+        res.setBusId(outing.getBus().getId());
+        res.setBusNumber(outing.getBusNumber());
+        res.setRegistrationNumber(outing.getBus().getRegistrationNumber());
+        res.setGateName(outing.getGateName());
+        res.setExitReason(outing.getExitReason());
+        res.setOutingDate(outing.getOutingDate());
+        res.setExitTime(outing.getExitTime());
+
+        if (outing.getBus().getRoute() != null) {
+            res.setRouteName(outing.getBus().getRoute().getRouteName());
+        }
+        return res;
+    }
+
     private BusEntryResponse toResponse(BusEntry entry) {
         BusEntryResponse res = new BusEntryResponse();
         res.setId(entry.getId());

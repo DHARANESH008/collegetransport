@@ -24,5 +24,15 @@ export const securityService = {
   getBuses: async () => {
     const response = await api.get('/security/buses');
     return response.data.data;
+  },
+
+  recordBusOuting: async (busNumber, reason) => {
+    const response = await api.post('/security/bus-outing', { busNumber, reason });
+    return response.data;
+  },
+
+  getTodayOutings: async () => {
+    const response = await api.get('/security/today-outings');
+    return response.data.data;
   }
 };

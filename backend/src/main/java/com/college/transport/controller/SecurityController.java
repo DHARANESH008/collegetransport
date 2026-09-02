@@ -71,4 +71,20 @@ public class SecurityController {
         List<BusEntryResponse> entries = securityService.getTodayEntries();
         return ResponseEntity.ok(ApiResponse.ok("Today's entries loaded", entries));
     }
+
+    // Bus Exit / Gate-Out (Security logs bus leaving campus with exit reason)
+    @PostMapping("/bus-outing")
+    public ResponseEntity<ApiResponse<com.college.transport.dto.BusOutingResponse>> recordBusOuting(
+            Authentication auth,
+            @Valid @RequestBody com.college.transport.dto.BusOutingRequest request) {
+        com.college.transport.dto.BusOutingResponse res = securityService.recordBusOuting(auth.getName(), request.getBusNumber(), request.getReason());
+        return ResponseEntity.ok(ApiResponse.ok("Bus #" + res.getBusNumber() + " GATE-OUT recorded for reason: " + res.getExitReason(), res));
+    }
+
+    // Today's outings table
+    @GetMapping("/today-outings")
+    public ResponseEntity<ApiResponse<List<com.college.transport.dto.BusOutingResponse>>> getTodayOutings() {
+        List<com.college.transport.dto.BusOutingResponse> outings = securityService.getTodayOutings();
+        return ResponseEntity.ok(ApiResponse.ok("Today's outings loaded", outings));
+    }
 }

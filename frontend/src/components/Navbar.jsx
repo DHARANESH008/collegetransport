@@ -135,7 +135,7 @@ export const Navbar = ({ onToggleSidebar }) => {
           >
             <Clock size={16} color="#94a3b8" />
             <Typography variant="caption" sx={{ color: '#cbd5e1', fontWeight: 600, fontSize: '0.8rem' }}>
-              {currentTime.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} • {currentTime.toLocaleTimeString()}
+              {currentTime.toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' })} • {currentTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
             </Typography>
           </Box>
 

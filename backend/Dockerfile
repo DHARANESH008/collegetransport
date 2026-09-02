@@ -10,7 +10,8 @@ FROM eclipse-temurin:21-alpine
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 
-# Render injects PORT dynamically
+# Set Timezone to Asia/Kolkata (IST - UTC+5:30)
+ENV TZ=Asia/Kolkata
 EXPOSE 8080
 ENV PORT=8080
 

@@ -30,21 +30,21 @@ public class DataCleanupScheduler {
     @Autowired
     private SystemCleanupLogRepository systemCleanupLogRepository;
 
-    @Value("${app.cleanup.retention-minutes:3}")
-    private int retentionMinutes; // 3 minutes retention
+    @Value("${app.cleanup.retention-days:90}")
+    private int retentionDays; // 90 days (3 months) retention
 
     @Value("${app.cleanup.enabled:true}")
     private boolean cleanupEnabled;
 
     /**
      * Automatic Scheduled Cleanup:
-     * Runs every minute by default to delete transient logs older than 3 minutes.
+     * Runs every night at midnight to delete transient logs older than 90 days (3 months).
      */
-    @Scheduled(cron = "${app.cleanup.cron:0 */1 * * * ?}")
+    @Scheduled(cron = "${app.cleanup.cron:0 0 0 * * ?}")
     @Transactional
     public void performScheduledDataCleanup() {
         if (!cleanupEnabled) {
-            logger.info("Database 3-Minute auto-cleanup is disabled in configuration.");
+            logger.info("Database 90-Day auto-cleanup is disabled in configuration.");
             return;
         }
 
@@ -52,14 +52,14 @@ public class DataCleanupScheduler {
     }
 
     /**
-     * Executes the cleanup of bus entries and trip histories older than retention cutoff (3 minutes).
+     * Executes the cleanup of bus entries and trip histories older than retention cutoff (90 days).
      */
     @Transactional
     public SystemCleanupLog executeCleanup() {
-        LocalDateTime cutoffDateTime = LocalDateTime.now().minusMinutes(retentionMinutes);
+        LocalDateTime cutoffDateTime = LocalDateTime.now().minusDays(retentionDays);
         LocalDate cutoffDate = cutoffDateTime.toLocalDate();
 
-        logger.info("Executing 3-Minute Data Retention Policy cleanup. Purging records created before: {}", cutoffDateTime);
+        logger.info("Executing 90-Day Data Retention Policy cleanup. Purging records created before: {}", cutoffDateTime);
 
         int entriesDeleted = 0;
         int tripsDeleted = 0;
@@ -70,13 +70,13 @@ public class DataCleanupScheduler {
             entriesDeleted = busEntryRepository.deleteOlderThanCutoff(cutoffDateTime);
             tripsDeleted = tripHistoryRepository.deleteOlderThanCutoff(cutoffDateTime);
 
-            message = String.format("Successfully cleaned up records older than %d minutes (%s). Purged %d bus gate entries and %d trip history logs.",
-                    retentionMinutes, cutoffDateTime, entriesDeleted, tripsDeleted);
+            message = String.format("Successfully cleaned up records older than %d days (%s). Purged %d bus gate entries and %d trip history logs.",
+                    retentionDays, cutoffDateTime, entriesDeleted, tripsDeleted);
             logger.info(message);
         } catch (Exception e) {
             status = "FAILED";
             message = "Cleanup failed: " + e.getMessage();
-            logger.error("Error executing database 3-minute cleanup: {}", e.getMessage(), e);
+            logger.error("Error executing database 90-day cleanup: {}", e.getMessage(), e);
         }
 
         SystemCleanupLog log = new SystemCleanupLog(cutoffDate, entriesDeleted, tripsDeleted, status, message);

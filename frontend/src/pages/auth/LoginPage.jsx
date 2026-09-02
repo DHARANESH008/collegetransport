@@ -23,6 +23,7 @@ import { Eye, EyeOff, Lock, User, ArrowRight, KeyRound, Zap, Sun, Moon } from 'l
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { LanguageSwitcher } from '../../components/LanguageSwitcher';
 import { motion } from 'framer-motion';
 import logoImg from '../../assets/logo.png';
 
@@ -252,66 +253,8 @@ export const LoginPage = () => {
             </Button>
           </Box>
 
-          {/* Language Switcher Pills */}
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              backgroundColor: 'rgba(15, 23, 42, 0.9)',
-              border: '1px solid rgba(255, 255, 255, 0.12)',
-              borderRadius: 4,
-              p: 0.4
-            }}
-          >
-            <Button
-              size="small"
-              onClick={() => changeLanguage('ta')}
-              sx={{
-                borderRadius: 3,
-                px: 1.2,
-                py: 0.4,
-                fontSize: '0.78rem',
-                fontWeight: 900,
-                color: currentLang === 'ta' ? '#ffffff' : '#94a3b8',
-                backgroundColor: currentLang === 'ta' ? '#10b981' : 'transparent',
-                boxShadow: currentLang === 'ta' ? '0 2px 10px rgba(16, 185, 129, 0.4)' : 'none'
-              }}
-            >
-              தமிழ்
-            </Button>
-            <Button
-              size="small"
-              onClick={() => changeLanguage('hi')}
-              sx={{
-                borderRadius: 3,
-                px: 1.2,
-                py: 0.4,
-                fontSize: '0.78rem',
-                fontWeight: 900,
-                color: currentLang === 'hi' ? '#ffffff' : '#94a3b8',
-                backgroundColor: currentLang === 'hi' ? '#10b981' : 'transparent',
-                boxShadow: currentLang === 'hi' ? '0 2px 10px rgba(16, 185, 129, 0.4)' : 'none'
-              }}
-            >
-              हिंदी
-            </Button>
-            <Button
-              size="small"
-              onClick={() => changeLanguage('en')}
-              sx={{
-                borderRadius: 3,
-                px: 1.2,
-                py: 0.4,
-                fontSize: '0.78rem',
-                fontWeight: 900,
-                color: currentLang === 'en' ? '#ffffff' : '#94a3b8',
-                backgroundColor: currentLang === 'en' ? '#10b981' : 'transparent',
-                boxShadow: currentLang === 'en' ? '0 2px 10px rgba(16, 185, 129, 0.4)' : 'none'
-              }}
-            >
-              English
-            </Button>
-          </Box>
+          {/* Dropdown Language Switcher (English, Tamil, Hindi) */}
+          <LanguageSwitcher />
         </Box>
       </Box>
 

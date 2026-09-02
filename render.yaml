@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: college-transport-backend
+    env: docker
+    dockercontext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    region: singapore
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8080

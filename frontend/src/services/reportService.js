@@ -145,5 +145,93 @@ export const reportService = {
     }
 
     doc.save(`College_Transport_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+  },
+
+  exportGateLogsToExcel: (records, title, filename) => {
+    const worksheetData = [
+      ['SMART COLLEGE TRANSPORT MANAGEMENT SYSTEM - ' + title.toUpperCase()],
+      [`Generated on: ${new Date().toLocaleString()} | Total Records: ${records.length}`],
+      [],
+      ['Bus No', 'Registration Plate', 'Route Name', 'Gate Name', 'Movement Reason / Status', 'Date', 'Time']
+    ];
+
+    records.forEach((r) => {
+      worksheetData.push([
+        r.busNumber ?? '-',
+        r.registrationNumber ?? '-',
+        r.routeName ?? '-',
+        r.gateName ?? '-',
+        r.exitReason || 'Campus Entry (Gate-In)',
+        r.entryDate || r.outingDate || '-',
+        r.entryTime || r.exitTime || '-'
+      ]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(worksheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Gate Movements');
+    XLSX.writeFile(wb, `${filename}_${new Date().toISOString().split('T')[0]}.xlsx`);
+  },
+
+  exportGateLogsToPdf: (records, title, filename) => {
+    const doc = new jsPDF('portrait', 'pt', 'a4');
+
+    // Header Banner
+    doc.setFillColor(11, 19, 43);
+    doc.rect(0, 0, 595, 60, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text('SMART COLLEGE TRANSPORT MANAGEMENT SYSTEM', 30, 26);
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(148, 163, 184);
+    doc.text(`Official Security Gate Movement Report • ${title}`, 30, 44);
+
+    // Summary Card
+    doc.setFillColor(241, 245, 249);
+    doc.roundedRect(30, 70, 535, 28, 5, 5, 'F');
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text(`Generated: ${new Date().toLocaleString()}   |   Total Recorded Movements: ${records.length}`, 40, 88);
+
+    const tableHeaders = [['Bus #', 'Registration', 'Route', 'Gate Name', 'Reason / Type', 'Time']];
+    const tableRows = records.map((r) => [
+      `Bus #${r.busNumber ?? '-'}`,
+      r.registrationNumber ?? '-',
+      r.routeName ?? '-',
+      r.gateName ?? '-',
+      r.exitReason || 'Gate-In Entry',
+      r.entryTime || r.exitTime ? String(r.entryTime || r.exitTime).substring(0, 8) : '-'
+    ]);
+
+    doc.autoTable({
+      head: tableHeaders,
+      body: tableRows,
+      startY: 110,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [245, 158, 11],
+        textColor: 255,
+        fontStyle: 'bold',
+        fontSize: 8
+      },
+      bodyStyles: { fontSize: 8, textColor: [30, 41, 59] },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      margin: { left: 30, right: 30 }
+    });
+
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(148, 163, 184);
+      doc.text(`Page ${i} of ${pageCount} • Smart College Transport Security Log`, 30, 820);
+    }
+
+    doc.save(`${filename}_${new Date().toISOString().split('T')[0]}.pdf`);
   }
 };

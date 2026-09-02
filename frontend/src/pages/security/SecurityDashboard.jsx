@@ -27,8 +27,9 @@ import {
   Tabs,
   Tab
 } from '@mui/material';
-import { ShieldAlert, DoorOpen, Plus, Edit, Search, Clock, CheckCircle2, AlertTriangle, Bus, LogOut, ArrowRightLeft, Download, FileSpreadsheet } from 'lucide-react';
+import { ShieldAlert, DoorOpen, Plus, Edit, Search, Clock, CheckCircle2, AlertTriangle, Bus, LogOut, ArrowRightLeft, Download, FileSpreadsheet, FileText } from 'lucide-react';
 import { securityService } from '../../services/securityService';
+import { reportService } from '../../services/reportService';
 import { useLanguage } from '../../context/LanguageContext';
 import { NotificationToast } from '../../components/NotificationToast';
 import { motion } from 'framer-motion';
@@ -645,20 +646,26 @@ export const SecurityDashboard = () => {
                 variant="contained"
                 color="success"
                 size="small"
-                startIcon={<Download size={16} />}
+                startIcon={<FileSpreadsheet size={16} />}
                 onClick={() =>
-                  exportToCSV(filteredEntries, 'Gate_In_Entries', [
-                    { label: 'Bus Number', key: 'busNumber' },
-                    { label: 'Registration Plate', key: 'registrationNumber' },
-                    { label: 'Route Name', key: 'routeName' },
-                    { label: 'Gate Name', key: 'gateName' },
-                    { label: 'Entry Date', key: 'entryDate' },
-                    { label: 'Entry Time', key: 'entryTime' }
-                  ])
+                  reportService.exportGateLogsToExcel(filteredEntries, 'Gate-In Campus Entries', 'Gate_In_Entries')
                 }
                 sx={{ borderRadius: 2.5, fontWeight: 800, px: 2 }}
               >
-                Export CSV
+                Excel (.xlsx)
+              </Button>
+
+              <Button
+                variant="contained"
+                color="info"
+                size="small"
+                startIcon={<FileText size={16} />}
+                onClick={() =>
+                  reportService.exportGateLogsToPdf(filteredEntries, 'Gate-In Campus Entries', 'Gate_In_Entries')
+                }
+                sx={{ borderRadius: 2.5, fontWeight: 800, px: 2 }}
+              >
+                PDF Report
               </Button>
 
               <TextField
@@ -755,21 +762,26 @@ export const SecurityDashboard = () => {
                 variant="contained"
                 color="warning"
                 size="small"
-                startIcon={<Download size={16} />}
+                startIcon={<FileSpreadsheet size={16} />}
                 onClick={() =>
-                  exportToCSV(filteredOutings, 'Gate_Out_Movements', [
-                    { label: 'Bus Number', key: 'busNumber' },
-                    { label: 'Registration Plate', key: 'registrationNumber' },
-                    { label: 'Route Name', key: 'routeName' },
-                    { label: 'Gate Name', key: 'gateName' },
-                    { label: 'Exit Reason', key: 'exitReason' },
-                    { label: 'Exit Date', key: 'outingDate' },
-                    { label: 'Exit Time', key: 'exitTime' }
-                  ])
+                  reportService.exportGateLogsToExcel(filteredOutings, 'Gate-Out Campus Outings', 'Gate_Out_Outings')
                 }
                 sx={{ borderRadius: 2.5, fontWeight: 800, px: 2 }}
               >
-                Export CSV
+                Excel (.xlsx)
+              </Button>
+
+              <Button
+                variant="contained"
+                color="info"
+                size="small"
+                startIcon={<FileText size={16} />}
+                onClick={() =>
+                  reportService.exportGateLogsToPdf(filteredOutings, 'Gate-Out Campus Outings', 'Gate_Out_Outings')
+                }
+                sx={{ borderRadius: 2.5, fontWeight: 800, px: 2 }}
+              >
+                PDF Report
               </Button>
 
               <TextField

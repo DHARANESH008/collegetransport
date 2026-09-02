@@ -1,7 +1,8 @@
 @echo off
+title Spring Boot Backend Server
 cd /d "%~dp0backend"
-set "JAVA_HOME=C:\Program Files\Java\jdk-21"
-set "PATH=%JAVA_HOME%\bin;C:\Users\dhara\.maven\apache-maven-3.9.6\bin;%PATH%"
-echo Starting Spring Boot Backend on http://localhost:8080 ...
-call mvn spring-boot:run
+echo ===================================================
+echo   Starting Smart College Transport Backend Server
+echo ===================================================
+call .\mvnw.cmd spring-boot:run
 pause

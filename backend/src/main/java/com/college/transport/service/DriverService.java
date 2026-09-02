@@ -197,6 +197,12 @@ public class DriverService {
         TripHistory trip = tripHistoryRepository.findByBusIdAndTripDate(bus.getId(), today)
                 .orElseThrow(() -> new BadRequestException("No active trip found for today. Please start journey first."));
 
+        // Reject modification if student count was already submitted for today's trip
+        if (trip.getStudentCount() != null && trip.getStudentCount() > 0) {
+            throw new BadRequestException("Student count has already been submitted for today's trip ("
+                    + trip.getStudentCount() + " students) and is locked. It cannot be changed again today.");
+        }
+
         // 2. Allowed Arrival Window: 08:30 AM to 10:00 AM
         // If marked after 10:00 AM, mark as LATE ARRIVAL (flagged for RED display)
         boolean isLate = now.isAfter(LocalTime.of(10, 0));

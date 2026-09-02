@@ -388,9 +388,21 @@ export const DriverDashboard = () => {
                   label={t('driver.enterStudents')}
                   value={studentCountInput}
                   onChange={(e) => setStudentCountInput(e.target.value)}
-                  disabled={!busInfo?.gateEntryRecorded || journeyStatus === 'NOT_STARTED' || journeyStatus === 'COMPLETED'}
-                  placeholder={busInfo?.gateEntryRecorded ? "e.g. 54" : "Locked until Security Gate entry"}
-                  helperText={!busInfo?.gateEntryRecorded ? "Waiting for Security to press 'Bus Enter' at gate" : "Enter count of students transported"}
+                  disabled={!busInfo?.gateEntryRecorded || journeyStatus === 'NOT_STARTED' || journeyStatus === 'COMPLETED' || (busInfo?.studentCount != null && busInfo.studentCount > 0)}
+                  placeholder={
+                    (busInfo?.studentCount != null && busInfo.studentCount > 0)
+                      ? "🔒 Locked (Submitted)"
+                      : busInfo?.gateEntryRecorded
+                      ? "e.g. 54"
+                      : "Locked until Security Gate entry"
+                  }
+                  helperText={
+                    (busInfo?.studentCount != null && busInfo.studentCount > 0)
+                      ? "🔒 Student count confirmed and locked for today's trip"
+                      : !busInfo?.gateEntryRecorded
+                      ? "Waiting for Security to press 'Bus Enter' at gate"
+                      : "Enter count of students transported"
+                  }
                 />
               </Box>
 
@@ -400,17 +412,21 @@ export const DriverDashboard = () => {
                 color={busInfo?.isLateArrival ? "error" : "warning"}
                 size="large"
                 onClick={handleSaveStudents}
-                disabled={actionLoading || !busInfo?.gateEntryRecorded || journeyStatus === 'NOT_STARTED' || journeyStatus === 'COMPLETED' || !studentCountInput}
+                disabled={actionLoading || !busInfo?.gateEntryRecorded || journeyStatus === 'NOT_STARTED' || journeyStatus === 'COMPLETED' || !studentCountInput || (busInfo?.studentCount != null && busInfo.studentCount > 0)}
                 startIcon={actionLoading ? <CircularProgress size={18} color="inherit" /> : <Check size={20} />}
                 sx={{ py: 1.3, fontWeight: 800, borderRadius: 3 }}
               >
-                {t('driver.saveStudentsBtn')}
+                {(busInfo?.studentCount != null && busInfo.studentCount > 0)
+                  ? "🔒 Submitted & Locked"
+                  : t('driver.saveStudentsBtn')}
               </Button>
 
               {busInfo?.studentCount != null && busInfo.studentCount > 0 && (
-                <Typography variant="caption" sx={{ color: busInfo.isLateArrival ? '#ef4444' : '#fbbf24', fontWeight: 700, display: 'block', mt: 1.5, textAlign: 'center' }}>
-                  ✓ {busInfo.studentCount} {t('common.students')} Saved {busInfo.isLateArrival ? '(🔴 LATE RECORD)' : ''}
-                </Typography>
+                <Box sx={{ mt: 1.5, p: 1.2, borderRadius: 2.5, backgroundColor: 'rgba(251, 191, 36, 0.12)', border: '1px solid rgba(251, 191, 36, 0.3)', textAlign: 'center' }}>
+                  <Typography variant="caption" sx={{ color: busInfo.isLateArrival ? '#ef4444' : '#fbbf24', fontWeight: 800, display: 'block' }}>
+                    🔒 {busInfo.studentCount} {t('common.students')} Submitted & Locked {busInfo.isLateArrival ? '(🔴 LATE RECORD)' : ''}
+                  </Typography>
+                </Box>
               )}
             </CardContent>
           </Card>

@@ -27,7 +27,7 @@ import {
   Tabs,
   Tab
 } from '@mui/material';
-import { ShieldAlert, DoorOpen, Plus, Edit, Search, Clock, CheckCircle2, AlertTriangle, Bus, LogOut, ArrowRightLeft } from 'lucide-react';
+import { ShieldAlert, DoorOpen, Plus, Edit, Search, Clock, CheckCircle2, AlertTriangle, Bus, LogOut, ArrowRightLeft, Download, FileSpreadsheet } from 'lucide-react';
 import { securityService } from '../../services/securityService';
 import { useLanguage } from '../../context/LanguageContext';
 import { NotificationToast } from '../../components/NotificationToast';
@@ -191,6 +191,34 @@ export const SecurityDashboard = () => {
     } finally {
       setActionLoading(false);
     }
+  };
+
+  // CSV Export Helper
+  const exportToCSV = (dataList, filename, columns) => {
+    if (!dataList || !dataList.length) {
+      setToast({ open: true, message: 'No records available to export to CSV', severity: 'warning' });
+      return;
+    }
+    const headers = columns.map((c) => c.label).join(',');
+    const rows = dataList.map((row) =>
+      columns
+        .map((col) => {
+          let val = row[col.key] != null ? String(row[col.key]) : '';
+          val = val.replace(/"/g, '""');
+          return `"${val}"`;
+        })
+        .join(',')
+    );
+
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers, ...rows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `${filename}_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setToast({ open: true, message: `✅ Exported ${dataList.length} records to ${filename}.csv!`, severity: 'success' });
   };
 
   // Open Edit Modal (Can edit Bus Number ONLY)
@@ -612,20 +640,42 @@ export const SecurityDashboard = () => {
               📥 {t('security.todayEntries')} ({filteredEntries.length})
             </Typography>
 
-            <TextField
-              size="small"
-              placeholder={t('security.searchPlaceholder')}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              sx={{ minWidth: 280 }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search size={16} color="#94a3b8" />
-                  </InputAdornment>
-                )
-              }}
-            />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+              <Button
+                variant="contained"
+                color="success"
+                size="small"
+                startIcon={<Download size={16} />}
+                onClick={() =>
+                  exportToCSV(filteredEntries, 'Gate_In_Entries', [
+                    { label: 'Bus Number', key: 'busNumber' },
+                    { label: 'Registration Plate', key: 'registrationNumber' },
+                    { label: 'Route Name', key: 'routeName' },
+                    { label: 'Gate Name', key: 'gateName' },
+                    { label: 'Entry Date', key: 'entryDate' },
+                    { label: 'Entry Time', key: 'entryTime' }
+                  ])
+                }
+                sx={{ borderRadius: 2.5, fontWeight: 800, px: 2 }}
+              >
+                Export CSV
+              </Button>
+
+              <TextField
+                size="small"
+                placeholder={t('security.searchPlaceholder')}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                sx={{ minWidth: 240 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search size={16} color="#94a3b8" />
+                    </InputAdornment>
+                  )
+                }}
+              />
+            </Box>
           </Box>
 
           <TableContainer component={Paper} sx={{ borderRadius: 4, backgroundColor: 'rgba(15, 23, 42, 0.75)' }}>
@@ -700,20 +750,43 @@ export const SecurityDashboard = () => {
               📤 Today's Gate-Out Movements ({filteredOutings.length})
             </Typography>
 
-            <TextField
-              size="small"
-              placeholder="Search outings by Bus # or Reason..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              sx={{ minWidth: 280 }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search size={16} color="#94a3b8" />
-                  </InputAdornment>
-                )
-              }}
-            />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+              <Button
+                variant="contained"
+                color="warning"
+                size="small"
+                startIcon={<Download size={16} />}
+                onClick={() =>
+                  exportToCSV(filteredOutings, 'Gate_Out_Movements', [
+                    { label: 'Bus Number', key: 'busNumber' },
+                    { label: 'Registration Plate', key: 'registrationNumber' },
+                    { label: 'Route Name', key: 'routeName' },
+                    { label: 'Gate Name', key: 'gateName' },
+                    { label: 'Exit Reason', key: 'exitReason' },
+                    { label: 'Exit Date', key: 'outingDate' },
+                    { label: 'Exit Time', key: 'exitTime' }
+                  ])
+                }
+                sx={{ borderRadius: 2.5, fontWeight: 800, px: 2 }}
+              >
+                Export CSV
+              </Button>
+
+              <TextField
+                size="small"
+                placeholder="Search outings by Bus # or Reason..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                sx={{ minWidth: 240 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search size={16} color="#94a3b8" />
+                    </InputAdornment>
+                  )
+                }}
+              />
+            </Box>
           </Box>
 
           <TableContainer component={Paper} sx={{ borderRadius: 4, backgroundColor: 'rgba(15, 23, 42, 0.75)' }}>

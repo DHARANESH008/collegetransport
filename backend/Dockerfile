@@ -1,12 +1,12 @@
-# Build stage using Maven and JDK 17
-FROM maven:3.9-eclipse-temurin-17 AS build
+# Build stage using Maven and JDK 21 (Matching pom.xml java.version 21)
+FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 COPY pom.xml .
 COPY src ./src
 RUN mvn clean package -DskipTests
 
-# Run stage using lightweight JRE 17
-FROM eclipse-temurin:17-jre-alpine
+# Run stage using lightweight JRE 21
+FROM eclipse-temurin:21-alpine
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 

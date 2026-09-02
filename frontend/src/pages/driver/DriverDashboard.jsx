@@ -297,7 +297,7 @@ export const DriverDashboard = () => {
                 variant="contained"
                 size="large"
                 onClick={handleStartJourney}
-                disabled={actionLoading || journeyStatus !== 'NOT_STARTED'}
+                disabled={actionLoading || journeyStatus !== 'NOT_STARTED' || (!busInfo?.isAutoStartKm && !manualStartKm)}
                 startIcon={actionLoading ? <CircularProgress size={18} color="inherit" /> : <Play size={20} />}
                 sx={{ py: 1.3, fontWeight: 800, borderRadius: 3 }}
               >

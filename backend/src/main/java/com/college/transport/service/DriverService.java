@@ -115,11 +115,10 @@ public class DriverService {
                 response.setPreviousEndKm(prevEndKm);
                 response.setIsAutoStartKm(true);
             } else {
-                // Auto baseline odometer (e.g. Bus #7 -> 19450.0 KM)
-                Double initialOdometer = (double) (bus.getBusNumber() * 1000 + 12450.0);
-                response.setStartKm(initialOdometer);
-                response.setPreviousEndKm(initialOdometer);
-                response.setIsAutoStartKm(true);
+                // Day 1 (First time ever for this bus): Driver must manually enter initial odometer Start KM
+                response.setStartKm(null);
+                response.setPreviousEndKm(null);
+                response.setIsAutoStartKm(false);
             }
             response.setJourneyStatus(TripHistory.JourneyStatus.NOT_STARTED.name());
             response.setStudentCount(0);
@@ -156,8 +155,7 @@ public class DriverService {
             if (manualStartKm != null && manualStartKm >= 0) {
                 effectiveStartKm = manualStartKm;
             } else {
-                // Auto baseline odometer (e.g. Bus #7 -> 19450.0 KM)
-                effectiveStartKm = (double) (bus.getBusNumber() * 1000 + 12450.0);
+                throw new BadRequestException("First trip setup: Please enter initial vehicle Odometer Start KM.");
             }
         }
 

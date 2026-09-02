@@ -75,6 +75,15 @@ export const ReportsPage = () => {
     }
   };
 
+  const handleExportCsv = () => {
+    if (!report || !report.records || report.records.length === 0) {
+      setToast({ open: true, message: 'No records available to export', severity: 'warning' });
+      return;
+    }
+    reportService.exportToCsvClient(report);
+    setToast({ open: true, message: 'CSV Export generated successfully', severity: 'success' });
+  };
+
   const handleExportPdf = () => {
     if (!report || !report.records || report.records.length === 0) {
       setToast({ open: true, message: 'No records available to export', severity: 'warning' });
@@ -120,13 +129,23 @@ export const ReportsPage = () => {
               {t('reports.title')}
             </Typography>
             <Typography variant="caption" sx={{ color: '#94a3b8' }}>
-              Daily, Weekly, and Monthly Telemetry with PDF & Excel Export
+              Daily, Weekly, and Monthly Telemetry with CSV, Excel & PDF Export
             </Typography>
           </Box>
         </Box>
 
-        {/* Action Export Buttons */}
-        <Box sx={{ display: 'flex', gap: 1.5 }}>
+        {/* Action Export Buttons (CSV, Excel, PDF) */}
+        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+          <Button
+            variant="contained"
+            color="secondary"
+            startIcon={<Download size={18} />}
+            onClick={handleExportCsv}
+            sx={{ borderRadius: 3, fontWeight: 700 }}
+          >
+            Export CSV
+          </Button>
+
           <Button
             variant="contained"
             color="success"

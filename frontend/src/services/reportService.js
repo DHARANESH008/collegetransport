@@ -9,6 +9,36 @@ export const reportService = {
     return response.data.data;
   },
 
+  exportToCsvClient: (report) => {
+    if (!report || !report.records || report.records.length === 0) return;
+    const headers = ['Bus No', 'Plate Reg No', 'Route', 'Driver Name', 'Driver Mobile', 'Gate', 'Gate Entry Time', 'Journey Start Time', 'Journey End Time', 'Start KM', 'End KM', 'Distance (KM)', 'Students', 'Status'];
+    const rows = report.records.map((r) => [
+      r.busNumber ?? '-',
+      r.registrationNumber ?? '-',
+      r.routeName ?? '-',
+      r.driverName ?? '-',
+      r.driverMobile ?? '-',
+      r.gateName ?? '-',
+      r.gateEntryTime ?? '-',
+      r.startTime ?? '-',
+      r.endTime ?? '-',
+      r.startKm ?? 0,
+      r.endKm ?? 0,
+      r.totalDistance ?? 0,
+      r.studentCount ?? 0,
+      r.journeyStatus ?? '-'
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers, ...rows].map((e) => e.map((val) => `"${String(val).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `College_Transport_Report_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  },
+
   exportToExcelClient: (report) => {
     const worksheetData = [
       ['SMART COLLEGE TRANSPORT MANAGEMENT SYSTEM - ' + (report.periodLabel || 'REPORT').toUpperCase()],

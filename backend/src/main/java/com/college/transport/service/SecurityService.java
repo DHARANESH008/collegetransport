@@ -151,15 +151,15 @@ public class SecurityService {
     private com.college.transport.dto.BusOutingResponse toOutingResponse(BusOuting outing) {
         com.college.transport.dto.BusOutingResponse res = new com.college.transport.dto.BusOutingResponse();
         res.setId(outing.getId());
-        res.setBusId(outing.getBus().getId());
+        res.setBusId(outing.getBus() != null ? outing.getBus().getId() : null);
         res.setBusNumber(outing.getBusNumber());
-        res.setRegistrationNumber(outing.getBus().getRegistrationNumber());
+        res.setRegistrationNumber(outing.getBus() != null ? outing.getBus().getRegistrationNumber() : "N/A");
         res.setGateName(outing.getGateName());
         res.setExitReason(outing.getExitReason());
         res.setOutingDate(outing.getOutingDate());
         res.setExitTime(outing.getExitTime());
 
-        if (outing.getBus().getRoute() != null) {
+        if (outing.getBus() != null && outing.getBus().getRoute() != null) {
             res.setRouteName(outing.getBus().getRoute().getRouteName());
         }
         return res;

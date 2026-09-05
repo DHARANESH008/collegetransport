@@ -26,6 +26,8 @@ public class TripHistoryDTO {
     private Boolean isLateArrival = false;
     private LocalTime studentMarkedTime;
     private String journeyStatus;
+    private String startKmPhoto;
+    private String endKmPhoto;
 
     public TripHistoryDTO() {}
 
@@ -195,5 +197,21 @@ public class TripHistoryDTO {
 
     public void setJourneyStatus(String journeyStatus) {
         this.journeyStatus = journeyStatus;
+    }
+
+    public String getStartKmPhoto() {
+        return startKmPhoto;
+    }
+
+    public void setStartKmPhoto(String startKmPhoto) {
+        this.startKmPhoto = startKmPhoto;
+    }
+
+    public String getEndKmPhoto() {
+        return endKmPhoto;
+    }
+
+    public void setEndKmPhoto(String endKmPhoto) {
+        this.endKmPhoto = endKmPhoto;
     }
 }

@@ -129,7 +129,7 @@ public class DriverService {
 
     // Start Journey (Driver presses Start Journey)
     @Transactional
-    public DriverBusInfoResponse startJourney(String username, Double manualStartKm) {
+    public DriverBusInfoResponse startJourney(String username, Double manualStartKm, String startKmPhoto) {
         User driver = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("Driver not found"));
 
@@ -150,7 +150,7 @@ public class DriverService {
         Double effectiveStartKm;
         List<TripHistory> prevTrips = tripHistoryRepository.findPreviousTripsWithEndKm(bus.getId());
         if (!prevTrips.isEmpty() && prevTrips.get(0).getEndKm() != null && prevTrips.get(0).getEndKm() > 0) {
-            effectiveStartKm = prevTrips.get(0).getEndKm();
+            effectiveStartKm = manualStartKm != null ? manualStartKm : prevTrips.get(0).getEndKm();
         } else {
             if (manualStartKm != null && manualStartKm >= 0) {
                 effectiveStartKm = manualStartKm;
@@ -160,6 +160,9 @@ public class DriverService {
         }
 
         trip.setStartKm(effectiveStartKm);
+        if (startKmPhoto != null && !startKmPhoto.isBlank()) {
+            trip.setStartKmPhoto(startKmPhoto);
+        }
         trip.setStartTime(LocalTime.now());
         trip.setJourneyStatus(TripHistory.JourneyStatus.IN_TRANSIT);
         trip = tripHistoryRepository.save(trip);
@@ -221,7 +224,7 @@ public class DriverService {
 
     // End Journey (Driver enters End KM, system computes Distance = End KM - Start KM)
     @Transactional
-    public DriverBusInfoResponse endJourney(String username, Double endKm) {
+    public DriverBusInfoResponse endJourney(String username, Double endKm, String endKmPhoto) {
         if (endKm == null || endKm < 0) {
             throw new BadRequestException("End KM is required and must be non-negative.");
         }
@@ -245,6 +248,9 @@ public class DriverService {
         double distance = Math.round((endKm - trip.getStartKm()) * 100.0) / 100.0;
 
         trip.setEndKm(endKm);
+        if (endKmPhoto != null && !endKmPhoto.isBlank()) {
+            trip.setEndKmPhoto(endKmPhoto);
+        }
         trip.setTotalDistance(distance);
         trip.setEndTime(LocalTime.now());
         trip.setJourneyStatus(TripHistory.JourneyStatus.COMPLETED);
@@ -285,6 +291,8 @@ public class DriverService {
         dto.setIsLateArrival(th.getIsLateArrival());
         dto.setStudentMarkedTime(th.getStudentMarkedTime());
         dto.setJourneyStatus(th.getJourneyStatus().name());
+        dto.setStartKmPhoto(th.getStartKmPhoto());
+        dto.setEndKmPhoto(th.getEndKmPhoto());
         return dto;
     }
 }

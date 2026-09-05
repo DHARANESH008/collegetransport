@@ -6,8 +6,8 @@ export const driverService = {
     return response.data.data;
   },
 
-  startJourney: async (manualStartKm = null) => {
-    const response = await api.post('/driver/start-journey', { manualStartKm });
+  startJourney: async (manualStartKm = null, startKmPhoto = null) => {
+    const response = await api.post('/driver/start-journey', { manualStartKm, startKmPhoto });
     return response.data.data || response.data;
   },
 
@@ -16,8 +16,8 @@ export const driverService = {
     return response.data.data || response.data;
   },
 
-  endJourney: async (endKm) => {
-    const response = await api.post('/driver/end-journey', { endKm });
+  endJourney: async (endKm, endKmPhoto = null) => {
+    const response = await api.post('/driver/end-journey', { endKm, endKmPhoto });
     return response.data.data || response.data;
   },
 

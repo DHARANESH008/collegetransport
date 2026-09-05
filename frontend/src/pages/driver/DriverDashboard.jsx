@@ -47,22 +47,26 @@ export const DriverDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [history, setHistory] = useState([]);
 
-  // Form inputs
+  // Form inputs & Photo proofs
   const [manualStartKm, setManualStartKm] = useState('');
+  const [startKmPhoto, setStartKmPhoto] = useState('');
   const [studentCountInput, setStudentCountInput] = useState('');
   const [endKmInput, setEndKmInput] = useState('');
+  const [endKmPhoto, setEndKmPhoto] = useState('');
 
   // Speedometer Scanner modal state
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scannerField, setScannerField] = useState('Start KM');
 
-  const handleDetectedKm = (kmValue) => {
+  const handleDetectedKm = (kmValue, imageSrc) => {
     if (scannerField === 'Start KM') {
       setManualStartKm(String(kmValue));
-      setToast({ open: true, message: `📷 Speedometer AI Scanned Start KM: ${kmValue} KM`, severity: 'success' });
+      if (imageSrc) setStartKmPhoto(imageSrc);
+      setToast({ open: true, message: `📷 Speedometer AI Scanned Start KM: ${kmValue} KM (Photo Attached)`, severity: 'success' });
     } else {
       setEndKmInput(String(kmValue));
-      setToast({ open: true, message: `📷 Speedometer AI Scanned End KM: ${kmValue} KM`, severity: 'success' });
+      if (imageSrc) setEndKmPhoto(imageSrc);
+      setToast({ open: true, message: `📷 Speedometer AI Scanned End KM: ${kmValue} KM (Photo Attached)`, severity: 'success' });
     }
   };
 
@@ -103,11 +107,11 @@ export const DriverDashboard = () => {
 
     try {
       const km = manualStartKm ? parseFloat(manualStartKm) : null;
-      const updated = await driverService.startJourney(km);
+      const updated = await driverService.startJourney(km, startKmPhoto);
       if (updated) {
         setBusInfo(updated);
       }
-      setToast({ open: true, message: '🚀 Journey started! Start Time logged.', severity: 'success' });
+      setToast({ open: true, message: '🚀 Journey started! Start Time & Speedometer Photo logged.', severity: 'success' });
       fetchDriverData();
     } catch (err) {
       setErrorMsg(err.response?.data?.message || 'Failed to start journey');
@@ -156,16 +160,13 @@ export const DriverDashboard = () => {
 
     setActionLoading(true);
     try {
-      const updated = await driverService.endJourney(endKm);
+      const updated = await driverService.endJourney(endKm, endKmPhoto);
       setBusInfo(updated);
       setToast({
         open: true,
         message: `🏁 Journey Completed! Total Distance: ${updated.totalDistance} KM`,
         severity: 'success'
       });
-      fetchDriverData();
-    } catch (err) {
-      setErrorMsg(err.response?.data?.message || 'Failed to end journey');
     } finally {
       setActionLoading(false);
     }

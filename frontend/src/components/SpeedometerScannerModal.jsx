@@ -193,7 +193,7 @@ export const SpeedometerScannerModal = ({ open, onClose, onDetectedKm, fieldName
 
   const handleConfirm = () => {
     if (detectedKm) {
-      onDetectedKm(parseFloat(detectedKm));
+      onDetectedKm(parseFloat(detectedKm), imagePreview);
       handleCloseModal();
     }
   };

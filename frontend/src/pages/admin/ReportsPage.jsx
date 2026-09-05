@@ -20,9 +20,15 @@ import {
   ButtonGroup,
   Divider,
   InputAdornment,
-  TablePagination
+  TablePagination,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  IconButton
 } from '@mui/material';
-import { FileText, Download, FileSpreadsheet, Search, Calendar, Filter, RefreshCw, Bus, Users, Gauge } from 'lucide-react';
+import { FileText, Download, FileSpreadsheet, Search, Calendar, Filter, RefreshCw, Bus, Users, Gauge, Camera, Eye, X, Image as ImageIcon } from 'lucide-react';
+import JSZip from 'jszip';
 import { reportService } from '../../services/reportService';
 import { adminService } from '../../services/adminService';
 import { useLanguage } from '../../context/LanguageContext';
@@ -73,6 +79,51 @@ export const ReportsPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Photo modal state
+  const [photoModal, setPhotoModal] = useState({ open: false, title: '', imageSrc: '', busNumber: '', kmReading: '' });
+
+  const handleDownloadPhotosZip = async () => {
+    if (!report || !report.records || report.records.length === 0) {
+      setToast({ open: true, message: 'No records available to download photos', severity: 'warning' });
+      return;
+    }
+
+    const zip = new JSZip();
+    const folder = zip.folder('Speedometer_Photos');
+    let photoCount = 0;
+
+    report.records.forEach((r) => {
+      if (r.startKmPhoto && r.startKmPhoto.startsWith('data:image')) {
+        const base64Data = r.startKmPhoto.split(',')[1];
+        const fileName = `Bus${r.busNumber}_StartKM_${r.startKm || 0}KM_${r.tripDate || 'Date'}.jpg`;
+        folder.file(fileName, base64Data, { base64: true });
+        photoCount++;
+      }
+      if (r.endKmPhoto && r.endKmPhoto.startsWith('data:image')) {
+        const base64Data = r.endKmPhoto.split(',')[1];
+        const fileName = `Bus${r.busNumber}_EndKM_${r.endKm || 0}KM_${r.tripDate || 'Date'}.jpg`;
+        folder.file(fileName, base64Data, { base64: true });
+        photoCount++;
+      }
+    });
+
+    if (photoCount === 0) {
+      setToast({ open: true, message: 'No Speedometer Photo proof images found in current report records', severity: 'warning' });
+      return;
+    }
+
+    setToast({ open: true, message: `⏳ Packaging ${photoCount} Speedometer Photos into ZIP...`, severity: 'info' });
+    const content = await zip.generateAsync({ type: 'blob' });
+
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(content);
+    link.download = `Speedometer_Photos_${new Date().toISOString().split('T')[0]}.zip`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setToast({ open: true, message: `✅ Downloaded ${photoCount} Speedometer Photos in ZIP!`, severity: 'success' });
   };
 
   const handleExportCsv = () => {
@@ -129,13 +180,23 @@ export const ReportsPage = () => {
               {t('reports.title')}
             </Typography>
             <Typography variant="caption" sx={{ color: '#94a3b8' }}>
-              Daily, Weekly, and Monthly Telemetry with CSV, Excel & PDF Export
+              Daily, Weekly, and Monthly Telemetry with CSV, Excel, PDF & Speedometer Photos Export
             </Typography>
           </Box>
         </Box>
 
-        {/* Action Export Buttons (CSV, Excel, PDF) */}
+        {/* Action Export Buttons (CSV, Excel, PDF, Speedometer Photos ZIP) */}
         <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+          <Button
+            variant="contained"
+            color="info"
+            startIcon={<Camera size={18} />}
+            onClick={handleDownloadPhotosZip}
+            sx={{ borderRadius: 3, fontWeight: 800, background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)' }}
+          >
+            📷 Download Photos (ZIP)
+          </Button>
+
           <Button
             variant="contained"
             color="secondary"
@@ -346,13 +407,14 @@ export const ReportsPage = () => {
                   <TableCell>End KM</TableCell>
                   <TableCell>Distance</TableCell>
                   <TableCell>Students</TableCell>
+                  <TableCell>Speedometer Photo Proofs</TableCell>
                   <TableCell>Status</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {filteredRecords.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={12} align="center" sx={{ py: 4, color: '#94a3b8' }}>
+                    <TableCell colSpan={13} align="center" sx={{ py: 4, color: '#94a3b8' }}>
                       {t('reports.noRecords')}
                     </TableCell>
                   </TableRow>
@@ -412,6 +474,53 @@ export const ReportsPage = () => {
                           {r.studentCount ?? 0} {isLate ? '⚠️' : ''}
                         </TableCell>
                         <TableCell>
+                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                            {r.startKmPhoto ? (
+                              <Chip
+                                icon={<Camera size={14} />}
+                                label="Start Photo"
+                                size="small"
+                                color="info"
+                                onClick={() =>
+                                  setPhotoModal({
+                                    open: true,
+                                    title: `Bus #${r.busNumber} Start KM Speedometer Proof`,
+                                    imageSrc: r.startKmPhoto,
+                                    busNumber: r.busNumber,
+                                    kmReading: `${r.startKm} KM`
+                                  })
+                                }
+                                sx={{ cursor: 'pointer', fontWeight: 800, borderRadius: 2 }}
+                              />
+                            ) : null}
+
+                            {r.endKmPhoto ? (
+                              <Chip
+                                icon={<Camera size={14} />}
+                                label="End Photo"
+                                size="small"
+                                color="success"
+                                onClick={() =>
+                                  setPhotoModal({
+                                    open: true,
+                                    title: `Bus #${r.busNumber} End KM Speedometer Proof`,
+                                    imageSrc: r.endKmPhoto,
+                                    busNumber: r.busNumber,
+                                    kmReading: `${r.endKm} KM`
+                                  })
+                                }
+                                sx={{ cursor: 'pointer', fontWeight: 800, borderRadius: 2 }}
+                              />
+                            ) : null}
+
+                            {!r.startKmPhoto && !r.endKmPhoto && (
+                              <Typography variant="caption" sx={{ color: '#64748b' }}>
+                                No photo proof
+                              </Typography>
+                            )}
+                          </Box>
+                        </TableCell>
+                        <TableCell>
                           {isLate ? (
                             <Chip
                               label="🔴 LATE (>10 AM)"
@@ -450,6 +559,47 @@ export const ReportsPage = () => {
           </>
         )}
       </TableContainer>
+
+      {/* Speedometer Photo Lightbox Modal */}
+      <Dialog
+        open={photoModal.open}
+        onClose={() => setPhotoModal({ ...photoModal, open: false })}
+        maxWidth="sm"
+        fullWidth
+        paperProps={{ sx: { borderRadius: 4, backgroundColor: '#0f172a' } }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#f8fafc' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box sx={{ p: 1, borderRadius: 2.5, backgroundColor: 'rgba(14, 165, 233, 0.2)', color: '#38bdf8' }}>
+              <Camera size={22} />
+            </Box>
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>
+              {photoModal.title}
+            </Typography>
+          </Box>
+          <IconButton onClick={() => setPhotoModal({ ...photoModal, open: false })} sx={{ color: '#94a3b8' }}>
+            <X size={20} />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent dividers sx={{ borderColor: 'rgba(255, 255, 255, 0.08)', p: 2 }}>
+          <Box sx={{ position: 'relative', width: '100%', height: 320, borderRadius: 3, overflow: 'hidden', backgroundColor: '#020617', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <img src={photoModal.imageSrc} alt="Speedometer Proof" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          </Box>
+          <Box sx={{ mt: 2, p: 2, borderRadius: 3, backgroundColor: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="subtitle2" sx={{ color: '#f8fafc', fontWeight: 800 }}>
+              Bus #{photoModal.busNumber} Speedometer Odometer Reading
+            </Typography>
+            <Chip label={photoModal.kmReading} color="success" sx={{ fontWeight: 900, fontSize: '1rem', px: 1 }} />
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setPhotoModal({ ...photoModal, open: false })} variant="contained" color="primary" sx={{ borderRadius: 2.5, fontWeight: 800 }}>
+            Close Preview
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <NotificationToast
         open={toast.open}

@@ -87,6 +87,14 @@ public class TripHistory {
     @Column(name = "journey_status", nullable = false, length = 30)
     private JourneyStatus journeyStatus = JourneyStatus.NOT_STARTED;
 
+    @Lob
+    @Column(name = "start_km_photo", columnDefinition = "LONGTEXT")
+    private String startKmPhoto;
+
+    @Lob
+    @Column(name = "end_km_photo", columnDefinition = "LONGTEXT")
+    private String endKmPhoto;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -283,6 +291,22 @@ public class TripHistory {
 
     public void setJourneyStatus(JourneyStatus journeyStatus) {
         this.journeyStatus = journeyStatus;
+    }
+
+    public String getStartKmPhoto() {
+        return startKmPhoto;
+    }
+
+    public void setStartKmPhoto(String startKmPhoto) {
+        this.startKmPhoto = startKmPhoto;
+    }
+
+    public String getEndKmPhoto() {
+        return endKmPhoto;
+    }
+
+    public void setEndKmPhoto(String endKmPhoto) {
+        this.endKmPhoto = endKmPhoto;
     }
 
     public LocalDateTime getCreatedAt() {

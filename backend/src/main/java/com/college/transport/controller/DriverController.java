@@ -33,7 +33,8 @@ public class DriverController {
             Authentication auth,
             @RequestBody(required = false) StartJourneyRequest request) {
         Double manualStartKm = request != null ? request.getManualStartKm() : null;
-        DriverBusInfoResponse res = driverService.startJourney(auth.getName(), manualStartKm);
+        String startKmPhoto = request != null ? request.getStartKmPhoto() : null;
+        DriverBusInfoResponse res = driverService.startJourney(auth.getName(), manualStartKm, startKmPhoto);
         return ResponseEntity.ok(ApiResponse.ok("Journey started successfully", res));
     }
 
@@ -51,7 +52,8 @@ public class DriverController {
     public ResponseEntity<ApiResponse<DriverBusInfoResponse>> endJourney(
             Authentication auth,
             @Valid @RequestBody EndJourneyRequest request) {
-        DriverBusInfoResponse res = driverService.endJourney(auth.getName(), request.getEndKm());
+        String endKmPhoto = request != null ? request.getEndKmPhoto() : null;
+        DriverBusInfoResponse res = driverService.endJourney(auth.getName(), request.getEndKm(), endKmPhoto);
         return ResponseEntity.ok(ApiResponse.ok("Journey ended successfully. Total Distance: " + res.getTotalDistance() + " KM", res));
     }
 

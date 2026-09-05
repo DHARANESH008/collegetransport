@@ -7,6 +7,8 @@ public class StartJourneyRequest {
     @DecimalMin(value = "0.0", message = "Start KM must be 0 or positive")
     private Double manualStartKm;
 
+    private String startKmPhoto;
+
     public StartJourneyRequest() {}
 
     public StartJourneyRequest(Double manualStartKm) {
@@ -19,5 +21,13 @@ public class StartJourneyRequest {
 
     public void setManualStartKm(Double manualStartKm) {
         this.manualStartKm = manualStartKm;
+    }
+
+    public String getStartKmPhoto() {
+        return startKmPhoto;
+    }
+
+    public void setStartKmPhoto(String startKmPhoto) {
+        this.startKmPhoto = startKmPhoto;
     }
 }

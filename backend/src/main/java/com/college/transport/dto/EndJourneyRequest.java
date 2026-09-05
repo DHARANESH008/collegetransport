@@ -9,6 +9,8 @@ public class EndJourneyRequest {
     @DecimalMin(value = "0.0", message = "End KM must be positive")
     private Double endKm;
 
+    private String endKmPhoto;
+
     public EndJourneyRequest() {}
 
     public EndJourneyRequest(Double endKm) {
@@ -21,5 +23,13 @@ public class EndJourneyRequest {
 
     public void setEndKm(Double endKm) {
         this.endKm = endKm;
+    }
+
+    public String getEndKmPhoto() {
+        return endKmPhoto;
+    }
+
+    public void setEndKmPhoto(String endKmPhoto) {
+        this.endKmPhoto = endKmPhoto;
     }
 }

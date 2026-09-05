@@ -286,45 +286,44 @@ export const DriverDashboard = () => {
 
               {/* Start KM display / input */}
               <Box sx={{ mb: 2.5 }}>
-                {busInfo?.isAutoStartKm ? (
-                  <Box sx={{ p: 2, borderRadius: 3, backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+                {busInfo?.isAutoStartKm && !manualStartKm ? (
+                  <Box sx={{ p: 2, mb: 1.5, borderRadius: 3, backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
                     <Typography variant="caption" sx={{ color: '#94a3b8', display: 'block', fontWeight: 600 }}>
-                      {t('driver.startKmLabel')} (Auto-loaded)
+                      {t('driver.startKmLabel')} (Auto-loaded from last trip)
                     </Typography>
                     <Typography variant="h5" sx={{ fontWeight: 900, color: '#60a5fa' }}>
                       {busInfo.startKm} KM
                     </Typography>
                   </Box>
                 ) : (
-                  <>
-                    <TextField
-                      fullWidth
-                      type="number"
-                      label={t('driver.startKmLabel')}
-                      value={manualStartKm}
-                      onChange={(e) => setManualStartKm(e.target.value)}
-                      disabled={journeyStatus !== 'NOT_STARTED'}
-                      placeholder="Enter current odometer KM"
-                      helperText="First trip: Enter vehicle Start KM"
-                      sx={{ mb: 1.5 }}
-                    />
-                    {journeyStatus === 'NOT_STARTED' && (
-                      <Button
-                        fullWidth
-                        variant="outlined"
-                        color="info"
-                        size="small"
-                        startIcon={<Camera size={16} />}
-                        onClick={() => {
-                          setScannerField('Start KM');
-                          setScannerOpen(true);
-                        }}
-                        sx={{ borderRadius: 2.5, fontWeight: 800, borderStyle: 'dashed' }}
-                      >
-                        📷 Scan Speedometer Photo (AI OCR)
-                      </Button>
-                    )}
-                  </>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    label={t('driver.startKmLabel')}
+                    value={manualStartKm || busInfo?.startKm || ''}
+                    onChange={(e) => setManualStartKm(e.target.value)}
+                    disabled={journeyStatus !== 'NOT_STARTED'}
+                    placeholder="Enter current odometer KM"
+                    helperText="Enter or scan vehicle Start KM"
+                    sx={{ mb: 1.5 }}
+                  />
+                )}
+
+                {journeyStatus === 'NOT_STARTED' && (
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    color="info"
+                    size="small"
+                    startIcon={<Camera size={16} />}
+                    onClick={() => {
+                      setScannerField('Start KM');
+                      setScannerOpen(true);
+                    }}
+                    sx={{ borderRadius: 2.5, fontWeight: 800, borderStyle: 'dashed' }}
+                  >
+                    📷 Scan Speedometer Photo (AI OCR)
+                  </Button>
                 )}
               </Box>
 

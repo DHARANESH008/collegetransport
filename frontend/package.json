@@ -25,6 +25,7 @@
     "react-i18next": "^15.0.2",
     "react-router-dom": "^6.26.2",
     "recharts": "^2.12.7",
+    "tesseract.js": "^7.0.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

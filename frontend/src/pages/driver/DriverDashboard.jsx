@@ -30,11 +30,14 @@ import {
   Clock,
   ArrowRight,
   ShieldCheck,
-  Check
+  Check,
+  Camera,
+  Sparkles
 } from 'lucide-react';
 import { driverService } from '../../services/driverService';
 import { useLanguage } from '../../context/LanguageContext';
 import { NotificationToast } from '../../components/NotificationToast';
+import { SpeedometerScannerModal } from '../../components/SpeedometerScannerModal';
 import { motion } from 'framer-motion';
 
 export const DriverDashboard = () => {
@@ -48,6 +51,20 @@ export const DriverDashboard = () => {
   const [manualStartKm, setManualStartKm] = useState('');
   const [studentCountInput, setStudentCountInput] = useState('');
   const [endKmInput, setEndKmInput] = useState('');
+
+  // Speedometer Scanner modal state
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scannerField, setScannerField] = useState('Start KM');
+
+  const handleDetectedKm = (kmValue) => {
+    if (scannerField === 'Start KM') {
+      setManualStartKm(String(kmValue));
+      setToast({ open: true, message: `📷 Speedometer AI Scanned Start KM: ${kmValue} KM`, severity: 'success' });
+    } else {
+      setEndKmInput(String(kmValue));
+      setToast({ open: true, message: `📷 Speedometer AI Scanned End KM: ${kmValue} KM`, severity: 'success' });
+    }
+  };
 
   // Loading states
   const [actionLoading, setActionLoading] = useState(false);
@@ -279,16 +296,35 @@ export const DriverDashboard = () => {
                     </Typography>
                   </Box>
                 ) : (
-                  <TextField
-                    fullWidth
-                    type="number"
-                    label={t('driver.startKmLabel')}
-                    value={manualStartKm}
-                    onChange={(e) => setManualStartKm(e.target.value)}
-                    disabled={journeyStatus !== 'NOT_STARTED'}
-                    placeholder="Enter current odometer KM"
-                    helperText="First trip: Enter vehicle Start KM"
-                  />
+                  <>
+                    <TextField
+                      fullWidth
+                      type="number"
+                      label={t('driver.startKmLabel')}
+                      value={manualStartKm}
+                      onChange={(e) => setManualStartKm(e.target.value)}
+                      disabled={journeyStatus !== 'NOT_STARTED'}
+                      placeholder="Enter current odometer KM"
+                      helperText="First trip: Enter vehicle Start KM"
+                      sx={{ mb: 1.5 }}
+                    />
+                    {journeyStatus === 'NOT_STARTED' && (
+                      <Button
+                        fullWidth
+                        variant="outlined"
+                        color="info"
+                        size="small"
+                        startIcon={<Camera size={16} />}
+                        onClick={() => {
+                          setScannerField('Start KM');
+                          setScannerOpen(true);
+                        }}
+                        sx={{ borderRadius: 2.5, fontWeight: 800, borderStyle: 'dashed' }}
+                      >
+                        📷 Scan Speedometer Photo (AI OCR)
+                      </Button>
+                    )}
+                  </>
                 )}
               </Box>
 
@@ -466,7 +502,24 @@ export const DriverDashboard = () => {
                   onChange={(e) => setEndKmInput(e.target.value)}
                   disabled={journeyStatus === 'NOT_STARTED' || journeyStatus === 'COMPLETED'}
                   placeholder={busInfo?.startKm ? `Must be >= ${busInfo.startKm}` : 'Enter End KM'}
+                  sx={{ mb: 1.5 }}
                 />
+                {journeyStatus !== 'NOT_STARTED' && journeyStatus !== 'COMPLETED' && (
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    color="info"
+                    size="small"
+                    startIcon={<Camera size={16} />}
+                    onClick={() => {
+                      setScannerField('End KM');
+                      setScannerOpen(true);
+                    }}
+                    sx={{ borderRadius: 2.5, fontWeight: 800, borderStyle: 'dashed' }}
+                  >
+                    📷 Scan Speedometer Photo (AI OCR)
+                  </Button>
+                )}
               </Box>
 
               <Button
@@ -584,6 +637,14 @@ export const DriverDashboard = () => {
           </Table>
         </TableContainer>
       </Box>
+
+      {/* Speedometer AI OCR Scanner Modal */}
+      <SpeedometerScannerModal
+        open={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onDetectedKm={handleDetectedKm}
+        fieldName={scannerField}
+      />
 
       <NotificationToast
         open={toast.open}
